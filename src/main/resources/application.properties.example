@@ -1,0 +1,38 @@
+# application.properties.example - safe template for repository
+# Copy this to src/main/resources/application.properties or set the equivalent env vars
+
+# Server
+server.port=8080
+
+# Spring
+spring.application.name=daily-mind
+
+# Datasource (replace with your DB values or set via environment variables)
+spring.datasource.url=jdbc:h2:mem:daily-mind;DB_CLOSE_DELAY=-1
+spring.datasource.username=sa
+spring.datasource.password=
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+# JWT (use secure values in production via env)
+jwt.secret=change_this_to_a_secure_secret
+jwt.expirationMs=3600000
+
+# Redis (optional; required if you enable Redis caching/session)
+spring.redis.host=localhost
+spring.redis.port=6379
+
+# OAuth2 client placeholders (don't commit real client secrets)
+google.client.id=YOUR_GOOGLE_CLIENT_ID
+google.client.secret=YOUR_GOOGLE_CLIENT_SECRET
+
+# Logging
+logging.level.root=INFO
+logging.level.spring.project.Daily.Mind=DEBUG
+
+# NOTE:
+# - Do NOT commit real secrets to git. Use this template and keep actual credentials out of source control.
+# - You can provide values via environment variables or a secure secret store in your deployment environment.
+
