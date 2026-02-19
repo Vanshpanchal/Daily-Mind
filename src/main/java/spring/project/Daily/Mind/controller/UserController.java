@@ -1,16 +1,20 @@
 package spring.project.Daily.Mind.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import spring.project.Daily.Mind.entity.Users;
 import spring.project.Daily.Mind.repository.UserRepository;
 import spring.project.Daily.Mind.responseDTO.UserProfileDTO;
 import spring.project.Daily.Mind.service.OtpService;
+import spring.project.Daily.Mind.service.TranscriptionService;
 import spring.project.Daily.Mind.service.UserService;
 import spring.project.Daily.Mind.service.WeatherService;
 import spring.project.Daily.Mind.utility.ApiResponse;
@@ -23,6 +27,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
 
+import java.util.Map;
+
+@Slf4j
 @RestController
 @RequestMapping("/user")
 @Tag(name = "User", description = "Operations related to the authenticated user")
@@ -42,6 +49,9 @@ public class UserController {
 
     @Autowired
     OtpService Otpservice;
+
+    @Autowired
+    TranscriptionService transcriptionService;
 
 
     @GetMapping("/me")
@@ -147,10 +157,10 @@ public class UserController {
     public ResponseEntity<ApiResponse<String>> setSentimentAnalysis() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Users user = userService.updateSentimentAnalysis(authentication.getName());
-            return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(" ", "Done"));
+            userService.updateSentimentAnalysis(authentication.getName());
+            return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Sentiment analysis toggled", "Done"));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.error("Error  " + e.getMessage(), 404));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("Error  " + e.getMessage(), 400));
         }
     }
 
@@ -202,6 +212,44 @@ public class UserController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String s = Otpservice.verifyOTP(authentication.getName(), otp);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(s, null));
+    }
+
+    @PostMapping(
+            value = "/upload-audio",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+
+    public ResponseEntity<ApiResponse<?>> uploadAudio(
+            @RequestParam("file") MultipartFile audioFile
+    ) {
+        try {
+
+            // 1️⃣ Basic validation
+            if (audioFile == null || audioFile.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("Audio file is empty", 400));
+            }
+
+            String contentType = audioFile.getContentType();
+            if (contentType == null || !contentType.startsWith("audio/")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("Invalid audio file type", 400));
+            }
+
+            // 2️⃣ Upload to Appwrite
+            String fileId = transcriptionService.uploadAudioFile(
+                    audioFile.getBytes()
+            );
+
+            // 3️⃣ Return success with proper JSON body
+            java.util.Map<String, String> payload = java.util.Map.of("fileId", fileId);
+            return ResponseEntity.ok(ApiResponse.success("Audio uploaded successfully", payload.toString()));
+
+        } catch (Exception e) {
+            log.error("uploadAudio error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to upload audio: " + e.getMessage(), 500));
+        }
     }
 
 
